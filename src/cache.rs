@@ -17,7 +17,7 @@ where
     async fn get(
         &mut self,
         bucket: &str,
-        key: &Vec<u8>,
+        key: &[u8],
         from_cache: Option<bool>,
     ) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
         let read_from_cache = from_cache.unwrap_or(true);
@@ -51,18 +51,13 @@ where
         }
     }
 
-    async fn put(
-        &mut self,
-        bucket: &str,
-        key: &Vec<u8>,
-        value: &Vec<u8>,
-    ) -> Result<(), Box<dyn Error>> {
+    async fn put(&mut self, bucket: &str, key: &[u8], value: &[u8]) -> Result<(), Box<dyn Error>> {
         self.cloud_storage.put(bucket, key, value).await?;
         self.on_disk_store.put(bucket, key, value).await?;
         self.in_memory_store.put(bucket, key, value).await
     }
 
-    async fn delete(&mut self, bucket: &str, key: &Vec<u8>) -> Result<(), Box<dyn Error>> {
+    async fn delete(&mut self, bucket: &str, key: &[u8]) -> Result<(), Box<dyn Error>> {
         self.cloud_storage.delete(bucket, key).await?;
         self.on_disk_store.delete(bucket, key).await?;
         self.in_memory_store.delete(bucket, key).await

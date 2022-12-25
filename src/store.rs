@@ -5,6 +5,7 @@ use std::{
     path::Path,
 };
 
+use aws_sdk_s3::types::ByteStream;
 use lru::LruCache;
 
 use rocksdb::Options;
@@ -14,19 +15,15 @@ pub trait Store {
     async fn get(
         self,
         bucket: &str,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>>;
     async fn put(
         &mut self,
         bucket: &str,
-        key: &Vec<u8>,
-        value: &Vec<u8>,
+        key: &[u8],
+        value: &[u8],
     ) -> Result<(), Box<dyn std::error::Error>>;
-    async fn delete(
-        &mut self,
-        bucket: &str,
-        key: &Vec<u8>,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+    async fn delete(&mut self, bucket: &str, key: &[u8]) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 struct LRUStore {
@@ -45,7 +42,7 @@ impl Store for LRUStore {
     async fn get(
         mut self,
         bucket: &str,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
@@ -57,21 +54,17 @@ impl Store for LRUStore {
     async fn put(
         &mut self,
         bucket: &str,
-        key: &Vec<u8>,
-        value: &Vec<u8>,
+        key: &[u8],
+        value: &[u8],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key);
-        self.cache.put(bucket_with_key, value.clone());
+        self.cache.put(bucket_with_key, value.to_vec());
         Ok(())
     }
 
-    async fn delete(
-        &mut self,
-        bucket: &str,
-        key: &Vec<u8>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn delete(&mut self, bucket: &str, key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key);
@@ -95,11 +88,9 @@ impl Store for DiskStore {
     async fn get(
         self,
         bucket: &str,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
-        let result = self
-            .db
-            .get(build_cache_key(&bucket.as_bytes().to_vec(), key));
+        let result = self.db.get(build_cache_key(bucket.as_bytes(), key));
 
         match result {
             Ok(v) => Ok(v),
@@ -110,26 +101,18 @@ impl Store for DiskStore {
     async fn put(
         &mut self,
         bucket: &str,
-        key: &Vec<u8>,
-        value: &Vec<u8>,
+        key: &[u8],
+        value: &[u8],
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let result = self
-            .db
-            .put(build_cache_key(&bucket.as_bytes().to_vec(), key), value);
+        let result = self.db.put(build_cache_key(bucket.as_bytes(), key), value);
         match result {
             Ok(_) => Ok(()),
             Err(e) => Err(Box::new(e)),
         }
     }
 
-    async fn delete(
-        &mut self,
-        bucket: &str,
-        key: &Vec<u8>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let result = self
-            .db
-            .delete(build_cache_key(&bucket.as_bytes().to_vec(), key));
+    async fn delete(&mut self, bucket: &str, key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+        let result = self.db.delete(build_cache_key(bucket.as_bytes(), key));
         match result {
             Ok(_) => Ok(()),
             Err(e) => Err(Box::new(e)),
@@ -146,14 +129,14 @@ impl Store for S3Store {
     async fn get(
         self,
         bucket: &str,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
         let result = self
             .client
             .get_object()
             .bucket(bucket)
             .key(std::str::from_utf8(
-                build_cache_key(&bucket.as_bytes().to_vec(), key).as_slice(),
+                build_cache_key(bucket.as_bytes(), key).as_slice(),
             )?)
             .send()
             .await?
@@ -170,17 +153,17 @@ impl Store for S3Store {
     async fn put(
         &mut self,
         bucket: &str,
-        key: &Vec<u8>,
-        value: &Vec<u8>,
+        key: &[u8],
+        value: &[u8],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let result = self
             .client
             .put_object()
             .bucket(bucket)
             .key(std::str::from_utf8(
-                build_cache_key(&bucket.as_bytes().to_vec(), key).as_slice(),
+                build_cache_key(bucket.as_bytes(), key).as_slice(),
             )?)
-            .body(value.clone().into())
+            .body(ByteStream::from(value.to_vec()))
             .send()
             .await;
         match result {
@@ -189,17 +172,13 @@ impl Store for S3Store {
         }
     }
 
-    async fn delete(
-        &mut self,
-        bucket: &str,
-        key: &Vec<u8>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn delete(&mut self, bucket: &str, key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
         let result = self
             .client
             .delete_object()
             .bucket(bucket)
             .key(std::str::from_utf8(
-                build_cache_key(&bucket.as_bytes().to_vec(), key).as_slice(),
+                build_cache_key(bucket.as_bytes(), key).as_slice(),
             )?)
             .send()
             .await;
@@ -210,7 +189,7 @@ impl Store for S3Store {
     }
 }
 
-fn build_cache_key(bucket: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
+fn build_cache_key(bucket: &[u8], key: &[u8]) -> Vec<u8> {
     let shard_key = ((calculate_hash(&key) % 256) + 1).to_string();
     let mut key_vec = bucket.to_owned();
     key_vec.extend("/".as_bytes().to_vec());
