@@ -1,19 +1,32 @@
-use std::error::Error;
+use std::{error::Error, time::Duration};
 
-use crate::store::Store;
+use aws_sdk_s3::Client;
+use rocksdb::Options;
 
-struct Cache<I: Store, O: Store, C: Store> {
+use crate::store::{DiskStore, LRUStore, S3Store, Store};
+
+struct Cache<I, O, C> {
     in_memory_store: I,
     on_disk_store: O,
     cloud_storage: C,
 }
 
-impl<I, O, C> Cache<I, O, C>
-where
-    I: Store + Copy,
-    O: Store + Copy,
-    C: Store + Copy,
-{
+impl<I: Store + Copy, O: Store + Copy, C: Store + Copy> Cache<I, O, C> {
+    fn simple_new(
+        in_memory_lru_capacity: u64,
+        disk_store_ttl: Duration,
+        client: Client,
+    ) -> Cache<LRUStore, DiskStore, S3Store> {
+        let in_memory_store = LRUStore::new(in_memory_lru_capacity);
+        let on_disk_store = DiskStore::new(&Options::default(), disk_store_ttl, "./db");
+        let cloud_storage = S3Store { client };
+
+        Cache {
+            in_memory_store,
+            on_disk_store,
+            cloud_storage,
+        }
+    }
     async fn get(
         &mut self,
         bucket: &str,

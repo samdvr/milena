@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
     num::NonZeroUsize,
     path::Path,
+    time::Duration,
 };
 
 use aws_sdk_s3::types::ByteStream;
@@ -26,12 +27,12 @@ pub trait Store {
     async fn delete(&mut self, bucket: &str, key: &[u8]) -> Result<(), Box<dyn std::error::Error>>;
 }
 
-struct LRUStore {
+pub struct LRUStore {
     cache: LruCache<Vec<u8>, Vec<u8>>,
 }
 
 impl LRUStore {
-    fn new(capacity: u64) -> Self {
+    pub fn new(capacity: u64) -> Self {
         let cache = LruCache::new(NonZeroUsize::new(capacity.try_into().unwrap()).unwrap());
         LRUStore { cache }
     }
@@ -73,13 +74,14 @@ impl Store for LRUStore {
     }
 }
 
-struct DiskStore {
+pub struct DiskStore {
     db: rocksdb::DB,
 }
 
 impl DiskStore {
-    fn new<P: AsRef<Path>>(opts: &Options, path: P) -> Self {
-        let db = rocksdb::DB::open(opts, path).expect("could not open rocksdb for path given");
+    pub fn new<P: AsRef<Path>>(opts: &Options, ttl: Duration, path: P) -> Self {
+        let db = rocksdb::DB::open_with_ttl(opts, path, ttl)
+            .expect("could not open rocksdb for path given");
         DiskStore { db }
     }
 }
@@ -120,8 +122,8 @@ impl Store for DiskStore {
     }
 }
 
-struct S3Store {
-    client: aws_sdk_s3::Client,
+pub struct S3Store {
+    pub client: aws_sdk_s3::Client,
 }
 
 #[tonic::async_trait]
