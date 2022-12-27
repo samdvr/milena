@@ -54,7 +54,7 @@ impl Store for LRUStore {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key.0.clone());
-        let mut data = self.cache.get(&bucket_with_key);
+        let data = self.cache.get(&bucket_with_key);
         Ok(data.map(|x| ByteStream::from_static(x.as_slice())))
     }
 
