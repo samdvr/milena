@@ -32,14 +32,12 @@ pub trait Store {
 }
 
 pub struct LRUStore {
-    cache: Box<LruCache<Vec<u8>, Vec<u8>>>,
+    cache: LruCache<Vec<u8>, Vec<u8>>,
 }
 
 impl LRUStore {
     pub fn new(capacity: u64) -> Self {
-        let cache = Box::new(LruCache::new(
-            NonZeroUsize::new(capacity.try_into().unwrap()).unwrap(),
-        ));
+        let cache = LruCache::new(NonZeroUsize::new(capacity.try_into().unwrap()).unwrap());
         LRUStore { cache }
     }
 }
