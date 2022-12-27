@@ -11,17 +11,17 @@ use std::{
 
 use rocksdb::Options;
 #[derive(Clone)]
-pub struct Key(Vec<u8>);
+pub struct Key(pub Vec<u8>);
 #[derive(Clone)]
-pub struct Value(Vec<u8>);
+pub struct Value(pub Vec<u8>);
 
 #[tonic::async_trait]
 pub trait Store {
     async fn get(
-        &'static mut self,
+        &mut self,
         bucket: &str,
         key: &Key,
-    ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>>;
+    ) -> Result<Option<Value>, Box<dyn std::error::Error>>;
     async fn put(
         &mut self,
         bucket: &str,
@@ -47,15 +47,15 @@ impl LRUStore {
 #[tonic::async_trait]
 impl Store for LRUStore {
     async fn get(
-        &'static mut self,
+        &mut self,
         bucket: &str,
         key: &Key,
-    ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>> {
+    ) -> Result<Option<Value>, Box<dyn std::error::Error>> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key.0.clone());
         let data = self.cache.get(&bucket_with_key);
-        Ok(data.map(|x| ByteStream::from_static(x.as_slice())))
+        Ok(data.map(|x| Value(x.clone())))
     }
 
     async fn put(
@@ -95,14 +95,14 @@ impl DiskStore {
 #[tonic::async_trait]
 impl Store for DiskStore {
     async fn get(
-        &'static mut self,
+        &mut self,
         bucket: &str,
         key: &Key,
-    ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>> {
+    ) -> Result<Option<Value>, Box<dyn std::error::Error>> {
         let result = self.db.get(build_cache_key(bucket.as_bytes(), &key).0);
 
         match result {
-            Ok(v) => Ok(v.map(|x| ByteStream::from(x))),
+            Ok(v) => Ok(v.map(|x| Value(x))),
             Err(e) => Err(Box::new(e)),
         }
     }
@@ -139,21 +139,25 @@ pub struct S3Store {
 #[tonic::async_trait]
 impl Store for S3Store {
     async fn get(
-        &'static mut self,
+        &mut self,
         bucket: &str,
         key: &Key,
-    ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>> {
-        Ok(Some(
-            self.client
-                .get_object()
-                .bucket(bucket)
-                .key(std::str::from_utf8(
-                    build_cache_key(bucket.as_bytes(), key).0.as_slice(),
-                )?)
-                .send()
-                .await?
-                .body,
-        ))
+    ) -> Result<Option<Value>, Box<dyn std::error::Error>> {
+        let data = self
+            .client
+            .get_object()
+            .bucket(bucket)
+            .key(std::str::from_utf8(
+                build_cache_key(bucket.as_bytes(), key).0.as_slice(),
+            )?)
+            .send()
+            .await?
+            .body
+            .collect()
+            .await
+            .unwrap()
+            .to_vec();
+        Ok(Some(Value(data)))
     }
 
     async fn put(

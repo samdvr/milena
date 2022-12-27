@@ -30,16 +30,45 @@ impl<I: Store + Copy, O: Store + Copy, C: Store + Copy> Cache<I, O, C> {
         }
     }
     async fn get(
-        &'static mut self,
+        &mut self,
         bucket: &str,
         key: &Key,
         from_cache: Option<bool>,
-    ) -> Result<Option<ByteStream>, Box<dyn Error>> {
+    ) -> Result<Option<Value>, Box<dyn Error>> {
         let read_from_cache = from_cache.unwrap_or(true);
 
         if read_from_cache {
-            Ok(None)
+            // Check in-memory store first
+            match self.in_memory_store.get(bucket, key).await {
+                Ok(Some(data)) => return Ok(Some(data)),
+                Ok(None) => {}
+                Err(e) => return Err(e),
+            }
+
+            // Check on-disk store next
+            match self.on_disk_store.get(bucket, key).await {
+                Ok(Some(data)) => {
+                    // Store data in in-memory store before returning it
+                    self.in_memory_store.put(bucket, key, &data).await;
+                    return Ok(Some(data));
+                }
+                Ok(None) => {}
+                Err(e) => return Err(e),
+            }
+
+            // Check cloud store if data is not found in cache
+            match self.cloud_store.get(bucket, key).await {
+                Ok(Some(data)) => {
+                    // Store data in in-memory and on-disk stores before returning it
+                    self.in_memory_store.put(bucket, key, &data).await?;
+                    self.on_disk_store.put(bucket, key, &data).await?;
+                    return Ok(Some(data));
+                }
+                Ok(None) => return Ok(None),
+                Err(e) => return Err(e),
+            }
         } else {
+            // Return data from cloud store without checking cache
             self.cloud_store.get(bucket, key).await
         }
     }
