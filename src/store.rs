@@ -22,7 +22,7 @@ pub trait Store {
         &mut self,
         bucket: &str,
         key: &Vec<u8>,
-        value: &ByteStream,
+        value: ByteStream,
     ) -> Result<(), Box<dyn std::error::Error>>;
     async fn delete(&self, bucket: &str, key: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>>;
 }
@@ -59,7 +59,7 @@ impl Store for LRUStore {
         &mut self,
         bucket: &str,
         key: &Vec<u8>,
-        value: &ByteStream,
+        value: ByteStream,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
@@ -109,7 +109,7 @@ impl Store for DiskStore {
         &mut self,
         bucket: &str,
         key: &Vec<u8>,
-        value: &ByteStream,
+        value: ByteStream,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let result = self.db.put(
             build_cache_key(bucket.as_bytes(), key),
@@ -159,7 +159,7 @@ impl Store for S3Store {
         &mut self,
         bucket: &str,
         key: &Vec<u8>,
-        value: &ByteStream,
+        value: ByteStream,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let result = self
             .client
@@ -168,7 +168,7 @@ impl Store for S3Store {
             .key(std::str::from_utf8(
                 build_cache_key(bucket.as_bytes(), key).as_slice(),
             )?)
-            .body(*value)
+            .body(value)
             .send()
             .await;
         match result {
