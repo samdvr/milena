@@ -14,7 +14,7 @@ use rocksdb::Options;
 #[tonic::async_trait]
 pub trait Store {
     async fn get(
-        &mut self,
+        self,
         bucket: &str,
         key: &Vec<u8>,
     ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>>;
@@ -41,7 +41,7 @@ impl LRUStore {
 #[tonic::async_trait]
 impl Store for LRUStore {
     async fn get(
-        &mut self,
+        self,
         bucket: &str,
         key: &Vec<u8>,
     ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>> {
@@ -93,7 +93,7 @@ impl DiskStore {
 #[tonic::async_trait]
 impl Store for DiskStore {
     async fn get(
-        &mut self,
+        self,
         bucket: &str,
         key: &Vec<u8>,
     ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>> {
@@ -138,7 +138,7 @@ pub struct S3Store {
 #[tonic::async_trait]
 impl Store for S3Store {
     async fn get(
-        &mut self,
+        self,
         bucket: &str,
         key: &Vec<u8>,
     ) -> Result<Option<ByteStream>, Box<dyn std::error::Error>> {
