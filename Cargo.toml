@@ -14,7 +14,15 @@ tonic = "0.8.3"
 rocksdb = "0.19.0"
 lru = "0.8.1"
 md5 = "0.7.0"
+tokio-stream = "0.1.11"
+futures-core = "0.3.25"
+crc = "3.0.0"
 
+
+
+[[bin]]
+name = "cache-server"
+path = "src/server.rs"
 
 
 
