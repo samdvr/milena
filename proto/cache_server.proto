@@ -2,13 +2,14 @@ syntax = "proto3";
 package cache_server;
 
 service Cache {
-    rpc Get (GetRequest) returns (stream GetResponse);
-    rpc Put (stream PutRequest) returns (PutResponse);
+    rpc Get (GetRequest) returns (GetResponse);
+    rpc Put (PutRequest) returns (PutResponse);
     rpc Delete (DeleteRequest) returns (DeleteResponse);
 }
 
 message GetRequest {
     bytes key = 1;
+    string bucket=2;
 }
 
 message GetResponse {
@@ -18,7 +19,8 @@ message GetResponse {
 
 message PutRequest {
     bytes key = 1;
-    bytes value = 2;
+    string bucket = 2;
+    bytes value = 3;
 }
 
 message PutResponse {
@@ -27,6 +29,7 @@ message PutResponse {
 
 message DeleteRequest {
     bytes key = 1;
+        string bucket = 2;
 }
 
 message DeleteResponse {
