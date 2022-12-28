@@ -17,9 +17,11 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
         disk_store_ttl: Duration,
         client: Client,
     ) -> Operation<LRUStore, DiskStore, S3Store> {
-        let mut in_memory_store = LRUStore::new(in_memory_lru_capacity);
-        let mut on_disk_store = DiskStore::new(&Options::default(), disk_store_ttl, "./db");
-        let mut cloud_store = S3Store { client };
+        let in_memory_store = LRUStore::new(in_memory_lru_capacity);
+        let mut ops = Options::default();
+        ops.create_if_missing(true);
+        let on_disk_store = DiskStore::new(&ops, disk_store_ttl, "./db");
+        let cloud_store = S3Store { client };
 
         Operation {
             in_memory_store,
