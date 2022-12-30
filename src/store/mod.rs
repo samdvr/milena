@@ -1,3 +1,4 @@
+use anyhow::Result;
 use aws_sdk_s3::types::ByteStream;
 
 use lru::LruCache;
@@ -17,9 +18,9 @@ pub struct Value(pub Vec<u8>);
 
 #[tonic::async_trait]
 pub trait Store {
-    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>, String>;
-    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<(), String>;
-    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<(), String>;
+    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>>;
+    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()>;
+    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()>;
 }
 
 pub struct LRUStore {
@@ -35,7 +36,7 @@ impl LRUStore {
 
 #[tonic::async_trait]
 impl Store for LRUStore {
-    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>, String> {
+    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key.0.clone());
@@ -43,7 +44,7 @@ impl Store for LRUStore {
         Ok(data.map(|x| Value(x.clone())))
     }
 
-    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<(), String> {
+    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key.clone().0);
@@ -52,7 +53,7 @@ impl Store for LRUStore {
         Ok(())
     }
 
-    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<(), String> {
+    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
         let mut bucket_with_key = bucket.as_bytes().to_vec();
         bucket_with_key.extend(b"/");
         bucket_with_key.extend(key.clone().0);
@@ -74,31 +75,24 @@ impl DiskStore {
 }
 #[tonic::async_trait]
 impl Store for DiskStore {
-    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>, String> {
-        let result = self.db.get(build_cache_key(bucket.as_bytes(), &key).0);
-
-        match result {
-            Ok(v) => Ok(v.map(|x| Value(x))),
-            Err(e) => Err(e.into_string()),
-        }
-    }
-
-    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<(), String> {
+    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
         let result = self
             .db
-            .put(build_cache_key(bucket.as_bytes(), key).0, &value.0);
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.into_string()),
-        }
+            .get(build_cache_key(bucket.as_bytes(), key).0)?
+            .map(|x| Value(x));
+
+        Ok(result)
     }
 
-    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<(), String> {
-        let result = self.db.delete(build_cache_key(bucket.as_bytes(), key).0);
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.into_string()),
-        }
+    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
+        self.db
+            .put(build_cache_key(bucket.as_bytes(), key).0, &value.0)?;
+        Ok(())
+    }
+
+    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
+        self.db.delete(build_cache_key(bucket.as_bytes(), key).0)?;
+        Ok(())
     }
 }
 
@@ -108,15 +102,14 @@ pub struct S3Store {
 
 #[tonic::async_trait]
 impl Store for S3Store {
-    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>, String> {
+    async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
         let data = self
             .client
             .get_object()
             .bucket(bucket)
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
             .send()
-            .await
-            .map_err(|x| x.to_string())?
+            .await?
             .body
             .collect()
             .await
@@ -125,7 +118,7 @@ impl Store for S3Store {
         Ok(Some(Value(data)))
     }
 
-    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<(), String> {
+    async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
         let result = self
             .client
             .put_object()
@@ -133,25 +126,20 @@ impl Store for S3Store {
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
             .body(ByteStream::from(value.clone().0))
             .send()
-            .await;
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.to_string()),
-        }
+            .await?;
+        Ok(())
     }
 
-    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<(), String> {
+    async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
         let result = self
             .client
             .delete_object()
             .bucket(bucket)
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
             .send()
-            .await;
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.to_string()),
-        }
+            .await?;
+
+        Ok(())
     }
 }
 

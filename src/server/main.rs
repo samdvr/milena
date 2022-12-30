@@ -30,7 +30,7 @@ impl Cache for CacheService {
         let request_ref = request.get_ref();
         let key = Key(request_ref.key.clone());
         let bucket = &request_ref.bucket;
-        let result = self.operation.lock().await.get(bucket, &key).await;
+        let result = self.operation.lock().await.get(bucket, &key).await?;
 
         match result {
             Ok(Some(data)) => {
@@ -57,7 +57,7 @@ impl Cache for CacheService {
             .lock()
             .await
             .put(bucket, &key, &Value(value))
-            .await;
+            .await?;
 
         match result {
             Ok(()) => Ok(Response::new(PutResponse { successful: true })),
@@ -76,7 +76,7 @@ impl Cache for CacheService {
             .lock()
             .await
             .delete(bucket, &Key(vec![1]))
-            .await;
+            .await?;
 
         match result {
             Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),

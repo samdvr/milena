@@ -17,6 +17,7 @@ md5 = "0.7.0"
 tokio-stream = "0.1.11"
 futures-core = "0.3.25"
 crc = "3.0.0"
+anyhow = '1.0.0'
 
 
 

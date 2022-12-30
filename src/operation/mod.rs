@@ -1,5 +1,6 @@
-use std::{error::Error, time::Duration};
+use std::time::Duration;
 
+use anyhow::Result;
 use aws_sdk_s3::Client;
 use rocksdb::Options;
 
@@ -12,7 +13,7 @@ pub struct Operation<I, O, C> {
 }
 
 impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
-    pub fn simple_new<'a>(
+    pub fn simple_new(
         in_memory_lru_capacity: u64,
         disk_store_ttl: Duration,
         client: Client,
@@ -29,7 +30,7 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
             cloud_store,
         }
     }
-    pub async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>, String> {
+    pub async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
         // Check in-memory store first
         if let Some(data) = self.in_memory_store.get(bucket, key).await? {
             return Ok(Some(data));
@@ -53,13 +54,13 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
         Ok(None)
     }
 
-    pub async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<(), String> {
+    pub async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
         self.cloud_store.put(bucket, key, value).await?;
         self.on_disk_store.put(bucket, key, value).await?;
         self.in_memory_store.put(bucket, key, value).await
     }
 
-    pub async fn delete(&mut self, bucket: &str, key: &Key) -> Result<(), String> {
+    pub async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
         self.cloud_store.delete(bucket, key).await?;
         self.on_disk_store.delete(bucket, key).await?;
         self.in_memory_store.delete(bucket, key).await

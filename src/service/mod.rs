@@ -11,7 +11,6 @@ use cache_server::{
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
 use tonic::Code;
 pub mod cache_server {
     tonic::include_proto!("cache_server");
@@ -40,7 +39,7 @@ impl Cache for CacheService {
                 successful: true,
                 value: vec![],
             })),
-            Err(e) => Err(Status::new(Code::Internal, e)),
+            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
 
@@ -61,7 +60,7 @@ impl Cache for CacheService {
 
         match result {
             Ok(()) => Ok(Response::new(PutResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, e)),
+            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
 
@@ -80,7 +79,7 @@ impl Cache for CacheService {
 
         match result {
             Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, e)),
+            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
 }
