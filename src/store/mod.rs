@@ -11,9 +11,9 @@ use std::{
 };
 
 use rocksdb::Options;
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Key(pub Vec<u8>);
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Value(pub Vec<u8>);
 
 #[tonic::async_trait]
@@ -140,13 +140,10 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
     let shard_key = ((calculate_hash(&key.0) % 256) + 1).to_string();
 
     let mut key_vec = vec![];
-    key_vec.extend(shard_key.as_bytes().to_vec());
-    key_vec.extend("/".as_bytes().to_vec());
+    key_vec.extend(shard_key.as_bytes());
 
     let mut key_to_md5 = key_vec.clone();
-    for i in &key.0 {
-        key_to_md5.push(*i);
-    }
+    key_to_md5.extend(&key.0);
     key_to_md5.extend(bucket);
 
     let digest = format!("{:x}", md5::compute(&key_to_md5))
@@ -154,7 +151,7 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
         .to_vec();
     key_vec.extend(digest);
 
-    Key(key_vec.to_vec())
+    Key(key_vec)
 }
 
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
@@ -171,6 +168,25 @@ fn test_build_cache() {
 
     assert_eq!(
         String::from_utf8_lossy(result.0.as_slice()),
-        "topic/254/5266607d733dccfade57904238347f03"
+        "254f1c075eea17b845c836c9e1ebee1d0cd"
     );
+}
+#[tokio::test]
+async fn test_lru_store_methods() {
+    let mut store = LRUStore::new(100);
+    let bucket = "bucket";
+    let key = Key("key".as_bytes().to_vec());
+    let value = Value("value".as_bytes().to_vec());
+
+    // Test put
+    store.put(bucket, &key, &value).await.unwrap();
+    assert_eq!(store.cache.len(), 1);
+
+    // Test get
+    let result = store.get(bucket, &key).await.unwrap();
+    assert_eq!(result.unwrap(), value.clone());
+
+    // Test delete
+    store.delete(bucket, &key).await.unwrap();
+    assert_eq!(store.cache.len(), 0);
 }
