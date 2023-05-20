@@ -1,8 +1,7 @@
 mod operation;
+mod server;
 mod service;
 mod store;
-mod server;
-
 
 use crate::operation::Operation;
 use crate::service::cache_server::cache_server::CacheServer;

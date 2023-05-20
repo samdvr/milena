@@ -9,7 +9,7 @@ service Cache {
 
 message GetRequest {
     bytes key = 1;
-    string bucket=2;
+    string bucket = 2;
 }
 
 message GetResponse {

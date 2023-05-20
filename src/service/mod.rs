@@ -26,8 +26,8 @@ impl Cache for CacheService {
         &self,
         request: tonic::Request<GetRequest>,
     ) -> Result<Response<GetResponse>, Status> {
-        let request_ref = request.get_ref();
-        let key = Key(request_ref.key.clone());
+        let request_ref = request.into_inner();
+        let key = Key(request_ref.key);
         let bucket = &request_ref.bucket;
         let result = self.operation.lock().await.get(bucket, &key).await;
         match result {
