@@ -13,7 +13,7 @@ use std::{
 };
 
 use rocksdb::Options;
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Key(pub Vec<u8>);
 #[derive(Clone)]
 pub struct Value(pub Vec<u8>);

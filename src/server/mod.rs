@@ -3,12 +3,13 @@ use crate::{
     store::{DiskStore, Key, LRUStore, S3Store, Value},
 };
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::Client;
+use aws_sdk_s3::Client as s3;
 use cache_server::{
     cache_server::{Cache, CacheServer},
     DeleteRequest, DeleteResponse, GetRequest, GetResponse, PutRequest, PutResponse,
 };
 
+use aws_sdk_s3::Region;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Code, Response, Status};
@@ -28,10 +29,9 @@ impl Cache for CacheService {
         request: tonic::Request<GetRequest>,
     ) -> Result<tonic::Response<GetResponse>, tonic::Status> {
         let request_ref = request.get_ref();
-        let key = Key(request_ref.key.clone());
+        let key = Key(request_ref.clone().key);
 
         let bucket = &request_ref.bucket;
-        println!("{:?}", bucket);
         let result = self.operation.lock().await.get(bucket, &key).await;
 
         match result {
@@ -42,7 +42,7 @@ impl Cache for CacheService {
                 Ok(Response::new(GetResponse { value, successful }))
             }
             Ok(None) => Err(Status::new(Code::NotFound, "not_found")),
-            Err(e) => Err(Status::new(Code::Internal, e)),
+            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
 
@@ -59,11 +59,11 @@ impl Cache for CacheService {
             .lock()
             .await
             .put(bucket, &key, &Value(value))
-            .await?;
+            .await;
 
         match result {
             Ok(()) => Ok(Response::new(PutResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, e)),
+            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
 
@@ -78,11 +78,11 @@ impl Cache for CacheService {
             .lock()
             .await
             .delete(bucket, &Key(vec![1]))
-            .await?;
+            .await;
 
         match result {
             Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, e)),
+            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
 }
@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
     let shared_config = aws_config::from_env().region(region_provider).load().await;
-    let client = s3::Client::new(&shared_config);
+    let client = s3::new(&shared_config);
 
     let service = CacheService {
         operation: Arc::new(Mutex::new(
