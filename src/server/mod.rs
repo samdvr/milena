@@ -32,7 +32,7 @@ impl Cache for CacheService {
 
         let bucket = &request_ref.bucket;
         println!("{:?}", bucket);
-        let result = self.operation.lock().await?.get(bucket, &key).await?;
+        let result = self.operation.lock().await.get(bucket, &key).await;
 
         match result {
             Ok(Some(data)) => {
@@ -84,7 +84,6 @@ impl Cache for CacheService {
             Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),
             Err(e) => Err(Status::new(Code::Internal, e)),
         }
-
     }
 }
 
