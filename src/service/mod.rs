@@ -39,7 +39,7 @@ impl Cache for CacheService {
                 successful: true,
                 value: vec![],
             })),
-            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
+            Err(e) => Err(Status::new(Code::Internal, format!("{e}"))),
         }
     }
 
@@ -60,7 +60,7 @@ impl Cache for CacheService {
 
         match result {
             Ok(()) => Ok(Response::new(PutResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
+            Err(e) => Err(Status::new(Code::Internal, format!("{e}"))),
         }
     }
 
@@ -79,7 +79,7 @@ impl Cache for CacheService {
 
         match result {
             Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, e.to_string())),
+            Err(e) => Err(Status::new(Code::Internal, format!("{e}"))),
         }
     }
 }
