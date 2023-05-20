@@ -23,7 +23,7 @@ anyhow = '1.0.0'
 
 [[bin]]
 name = "cache-server"
-path = "src/server.rs"
+path = "src/main.rs"
 
 
 

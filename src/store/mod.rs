@@ -3,6 +3,7 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3 as s3;
 use aws_sdk_s3::{types::ByteStream, Region};
 use lru::LruCache;
+use std::str::from_utf8;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -38,27 +39,20 @@ impl LRUStore {
 #[tonic::async_trait]
 impl Store for LRUStore {
     async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
-        let mut bucket_with_key = bucket.as_bytes().to_vec();
-        bucket_with_key.extend(b"/");
-        bucket_with_key.extend(key.0.clone());
-        let data = self.cache.get(&bucket_with_key);
+        let data = self.cache.get(&build_cache_key(bucket.as_bytes(), key).0);
         Ok(data.map(|x| Value(x.clone())))
     }
 
     async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
-        let mut bucket_with_key = bucket.as_bytes().to_vec();
-        bucket_with_key.extend(b"/");
-        bucket_with_key.extend(key.clone().0);
-        self.cache.put(bucket_with_key, value.clone().0);
+        self.cache
+            .put(build_cache_key(bucket.as_bytes(), key).0, value.clone().0);
 
         Ok(())
     }
 
     async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
-        let mut bucket_with_key = bucket.as_bytes().to_vec();
-        bucket_with_key.extend(b"/");
-        bucket_with_key.extend(key.clone().0);
-        self.cache.pop_entry(&bucket_with_key);
+        self.cache
+            .pop_entry(&build_cache_key(bucket.as_bytes(), key).0);
         Ok(())
     }
 }
@@ -104,6 +98,10 @@ pub struct S3Store {
 #[tonic::async_trait]
 impl Store for S3Store {
     async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
+        println!(
+            "{}",
+            std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap()
+        );
         let data = self
             .client
             .get_object()
@@ -120,6 +118,10 @@ impl Store for S3Store {
     }
 
     async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
+        println!(
+            "{}",
+            std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap()
+        );
         let _result = self
             .client
             .put_object()
@@ -146,8 +148,8 @@ impl Store for S3Store {
 
 fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
     let shard_key = ((calculate_hash(&key.0) % 256) + 1).to_string();
-    let mut key_vec = bucket.to_owned();
-    key_vec.extend("/".as_bytes().to_vec());
+
+    let mut key_vec = vec![];
     key_vec.extend(shard_key.as_bytes().to_vec());
     key_vec.extend("/".as_bytes().to_vec());
 
@@ -155,11 +157,13 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
     for i in &key.0 {
         key_to_md5.push(*i);
     }
+    key_to_md5.extend(bucket);
 
     let digest = format!("{:x}", md5::compute(&key_to_md5))
         .as_bytes()
         .to_vec();
     key_vec.extend(digest);
+
     Key(key_vec.to_vec())
 }
 
