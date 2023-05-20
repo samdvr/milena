@@ -2,17 +2,15 @@ use crate::{
     operation::Operation,
     store::{DiskStore, Key, LRUStore, S3Store, Value},
 };
-use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::Client as s3;
+
 use cache_server::{
-    cache_server::{Cache, CacheServer},
-    DeleteRequest, DeleteResponse, GetRequest, GetResponse, PutRequest, PutResponse,
+    cache_server::Cache, DeleteRequest, DeleteResponse, GetRequest, GetResponse, PutRequest,
+    PutResponse,
 };
 
-use aws_sdk_s3::Region;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use tokio::sync::Mutex;
-use tonic::{transport::Server, Code, Response, Status};
+use tonic::{Code, Response, Status};
 
 pub mod cache_server {
     tonic::include_proto!("cache_server");
@@ -85,29 +83,4 @@ impl Cache for CacheService {
             Err(e) => Err(Status::new(Code::Internal, e.to_string())),
         }
     }
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse()?;
-    let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
-    let shared_config = aws_config::from_env().region(region_provider).load().await;
-    let client = s3::new(&shared_config);
-
-    let service = CacheService {
-        operation: Arc::new(Mutex::new(
-            Operation::<LRUStore, DiskStore, S3Store>::simple_new(
-                100,
-                Duration::from_secs(100000),
-                client,
-            ),
-        )),
-    };
-
-    Server::builder()
-        .add_service(CacheServer::new(service))
-        .serve(addr)
-        .await?;
-
-    Ok(())
 }
