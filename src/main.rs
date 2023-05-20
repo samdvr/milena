@@ -1,5 +1,4 @@
 mod operation;
-mod server;
 mod service;
 mod store;
 

@@ -112,10 +112,6 @@ impl Store for S3Store {
     }
 
     async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
-        println!(
-            "{}",
-            std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap()
-        );
         let _result = self
             .client
             .put_object()
