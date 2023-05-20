@@ -1,9 +1,7 @@
 use anyhow::Result;
-use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3 as s3;
-use aws_sdk_s3::{types::ByteStream, Region};
+use aws_sdk_s3::types::ByteStream;
 use lru::LruCache;
-use std::str::from_utf8;
+
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
