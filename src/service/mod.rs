@@ -47,10 +47,10 @@ impl Cache for CacheService {
         &self,
         request: tonic::Request<PutRequest>,
     ) -> Result<Response<PutResponse>, Status> {
-        let request_ref = request.get_ref();
-        let key = Key(request_ref.key.clone());
+        let request_ref = request.into_inner();
+        let key = Key(request_ref.key);
         let bucket = &request_ref.bucket;
-        let value = request_ref.clone().value;
+        let value = request_ref.value;
         let result = self
             .operation
             .lock()
@@ -68,14 +68,10 @@ impl Cache for CacheService {
         &self,
         request: tonic::Request<DeleteRequest>,
     ) -> Result<Response<DeleteResponse>, Status> {
-        let request_ref = request.get_ref();
+        let request_ref = request.into_inner();
+        let key = request_ref.key;
         let bucket = &request_ref.bucket;
-        let result = self
-            .operation
-            .lock()
-            .await
-            .delete(bucket, &Key(vec![1]))
-            .await;
+        let result = self.operation.lock().await.delete(bucket, &Key(key)).await;
 
         match result {
             Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),
