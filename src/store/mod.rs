@@ -1,6 +1,7 @@
 use anyhow::Result;
-use aws_sdk_s3::types::ByteStream;
-
+use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_s3 as s3;
+use aws_sdk_s3::{types::ByteStream, Region};
 use lru::LruCache;
 use std::{
     collections::hash_map::DefaultHasher,
@@ -79,7 +80,7 @@ impl Store for DiskStore {
         let result = self
             .db
             .get(build_cache_key(bucket.as_bytes(), key).0)?
-            .map(|x| Value(x));
+            .map(Value);
 
         Ok(result)
     }
@@ -119,7 +120,7 @@ impl Store for S3Store {
     }
 
     async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
-        let result = self
+        let _result = self
             .client
             .put_object()
             .bucket(bucket)
@@ -131,7 +132,7 @@ impl Store for S3Store {
     }
 
     async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
-        let result = self
+        let _result = self
             .client
             .delete_object()
             .bucket(bucket)
