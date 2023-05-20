@@ -88,9 +88,10 @@ impl Cache for CacheService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
-    let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
-    let config = aws_config::from_env().region(region_provider).load().await;
-    let client = Client::new(&config);
+    let region_provider = RegionProviderChain::first_try(Region::new("us-west-2"));
+    let shared_config = aws_config::from_env().region(region_provider).load().await;
+    let client = s3::Client::new(&shared_config);
+
     let service = CacheService {
         operation: Arc::new(Mutex::new(
             Operation::<LRUStore, DiskStore, S3Store>::simple_new(
