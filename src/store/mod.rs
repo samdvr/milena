@@ -96,10 +96,6 @@ pub struct S3Store {
 #[tonic::async_trait]
 impl Store for S3Store {
     async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
-        println!(
-            "{}",
-            std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap()
-        );
         let data = self
             .client
             .get_object()
