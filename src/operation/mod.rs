@@ -3,7 +3,6 @@ use std::time::Duration;
 use anyhow::Result;
 use aws_sdk_s3::Client;
 use rocksdb::Options;
-use tonic::async_trait;
 
 use crate::store::{DiskStore, Key, LRUStore, S3Store, Store, Value};
 
