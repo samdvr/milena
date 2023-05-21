@@ -1134,21 +1134,10 @@ dependencies = [
  "futures-core",
  "lru",
  "md5",
- "milena-protos",
  "prost",
  "rocksdb",
  "tokio",
  "tokio-stream",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
-name = "milena-protos"
-version = "0.1.0"
-dependencies = [
- "prost",
- "tokio",
  "tonic",
  "tonic-build",
 ]
