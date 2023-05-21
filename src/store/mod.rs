@@ -111,11 +111,8 @@ impl Store for S3Store {
             Ok(v) => Ok(Some(Value(v.body.collect().await.unwrap().to_vec()))),
             Err(e) => {
                 let error = e.into_service_error();
-                if error.is_no_such_key() {
-                    Ok(None)
-                } else {
-                    Err(error.into())
-                }
+
+                Err(error.into())
             }
         }
     }
