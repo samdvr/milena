@@ -5,16 +5,13 @@ use crate::{
 
 use tonic::{Response, Status};
 
-use cache_server::{
+use milena_protos::cache_server::{
     cache_server::Cache, DeleteRequest, DeleteResponse, GetRequest, GetResponse, PutRequest,
     PutResponse,
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::Code;
-pub mod cache_server {
-    tonic::include_proto!("cache_server");
-}
 
 pub struct CacheService {
     pub operation: Arc<Mutex<Operation<LRUStore, DiskStore, S3Store>>>,
