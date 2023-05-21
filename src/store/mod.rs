@@ -1,8 +1,5 @@
 use anyhow::Result;
-use aws_sdk_s3::{
-    error::{GetObjectError, NoSuchKey},
-    types::{ByteStream, SdkError},
-};
+use aws_sdk_s3::types::ByteStream;
 use lru::LruCache;
 use tonic::async_trait;
 
@@ -118,27 +115,32 @@ impl Store for S3Store {
     }
 
     async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
-        let _result = self
+        let result = self
             .client
             .put_object()
             .bucket(bucket)
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
             .body(ByteStream::from(value.clone().0))
             .send()
-            .await?;
-        Ok(())
+            .await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.into_service_error().into()),
+        }
     }
 
     async fn delete(&mut self, bucket: &str, key: &Key) -> Result<()> {
-        let _result = self
+        let result = self
             .client
             .delete_object()
             .bucket(bucket)
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
             .send()
-            .await?;
-
-        Ok(())
+            .await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.into_service_error().into()),
+        }
     }
 }
 
@@ -157,13 +159,6 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
         .as_bytes()
         .to_vec();
     key_vec.extend(digest);
-    /*
-    println!(
-        "key: {:?}",
-        std::str::from_utf8(key_vec.clone().as_slice()).unwrap()
-    );
-    */
-
     Key(key_vec)
 }
 
