@@ -1,11 +1,10 @@
 use anyhow::Result;
 use aws_sdk_s3::types::ByteStream;
 use lru::LruCache;
+
 use tonic::async_trait;
 
 use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
     num::NonZeroUsize,
     path::Path,
     time::Duration,
@@ -145,11 +144,7 @@ impl Store for S3Store {
 }
 
 fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
-    let shard_key = ((calculate_hash(&key.0) % 256) + 1).to_string();
-
     let mut key_vec = vec![];
-    key_vec.extend(shard_key.as_bytes());
-    key_vec.extend("/".as_bytes());
 
     let mut key_to_md5 = key_vec.clone();
     key_to_md5.extend(&key.0);
@@ -158,14 +153,12 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
     let digest = format!("{:x}", md5::compute(&key_to_md5))
         .as_bytes()
         .to_vec();
+
+    key_vec.extend(&digest[0..4]);
+    key_vec.extend("/".as_bytes());
+
     key_vec.extend(digest);
     Key(key_vec)
-}
-
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
 }
 
 #[test]
@@ -176,7 +169,7 @@ fn test_build_cache() {
 
     assert_eq!(
         String::from_utf8_lossy(result.0.as_slice()),
-        "254/cb9e520cda80413019ed2449e017137f"
+        "0d08/0d08c5418603c1ec5755b6f4754bf3d4"
     );
 }
 #[tokio::test]
