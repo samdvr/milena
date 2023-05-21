@@ -1,6 +1,10 @@
 use anyhow::Result;
-use aws_sdk_s3::types::ByteStream;
+use aws_sdk_s3::{
+    error::{GetObjectError, NoSuchKey},
+    types::{ByteStream, SdkError},
+};
 use lru::LruCache;
+use tonic::async_trait;
 
 use std::{
     collections::hash_map::DefaultHasher,
@@ -93,7 +97,7 @@ pub struct S3Store {
     pub client: aws_sdk_s3::Client,
 }
 
-#[tonic::async_trait]
+#[async_trait]
 impl Store for S3Store {
     async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
         let data = self
@@ -102,13 +106,18 @@ impl Store for S3Store {
             .bucket(bucket)
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
             .send()
-            .await?
-            .body
-            .collect()
-            .await
-            .unwrap()
-            .to_vec();
-        Ok(Some(Value(data)))
+            .await;
+        match data {
+            Ok(v) => Ok(Some(Value(v.body.collect().await.unwrap().to_vec()))),
+            Err(e) => {
+                let error = e.into_service_error();
+                if error.is_no_such_key() {
+                    Ok(None)
+                } else {
+                    Err(error.into())
+                }
+            }
+        }
     }
 
     async fn put(&mut self, bucket: &str, key: &Key, value: &Value) -> Result<()> {
@@ -141,6 +150,7 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
 
     let mut key_vec = vec![];
     key_vec.extend(shard_key.as_bytes());
+    key_vec.extend("/".as_bytes());
 
     let mut key_to_md5 = key_vec.clone();
     key_to_md5.extend(&key.0);
@@ -150,6 +160,12 @@ fn build_cache_key(bucket: &[u8], key: &Key) -> Key {
         .as_bytes()
         .to_vec();
     key_vec.extend(digest);
+    /*
+    println!(
+        "key: {:?}",
+        std::str::from_utf8(key_vec.clone().as_slice()).unwrap()
+    );
+    */
 
     Key(key_vec)
 }
