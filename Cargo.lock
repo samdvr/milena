@@ -1156,6 +1156,12 @@ dependencies = [
 [[package]]
 name = "milena-router"
 version = "0.1.0"
+dependencies = [
+ "milena-protos",
+ "prost",
+ "tokio",
+ "tonic",
+]
 
 [[package]]
 name = "mime"

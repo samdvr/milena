@@ -1,0 +1,58 @@
+syntax = "proto3";
+package router_server;
+
+service Router {
+    rpc Join(JoinRequest) returns (JoinResponse);
+    rpc Leave(LeaveRequest) returns (LeaveResponse);
+    rpc Get (GetRequest) returns (GetResponse);
+    rpc Put (PutRequest) returns (PutResponse);
+    rpc Delete (DeleteRequest) returns (DeleteResponse);
+}
+
+message GetRequest {
+    bytes key = 1;
+    string bucket = 2;
+}
+
+message GetResponse {
+    bool   successful = 1;
+    bytes  value = 2;
+}
+
+
+message PutRequest {
+    bytes key = 1;
+    string bucket = 2;
+    bytes value = 3;
+}
+
+message PutResponse {
+    bool successful = 1;
+}
+
+message DeleteRequest {
+    bytes key = 1;
+        string bucket = 2;
+}
+
+message DeleteResponse {
+    bool  successful = 1;
+}
+
+message JoinRequest {
+    string  address = 1;
+}
+
+message JoinResponse {
+    bool  successful = 1;
+}
+
+
+message LeaveRequest {
+    string  address = 1;
+}
+
+
+message LeaveResponse {
+    bool  successful = 1;
+}
