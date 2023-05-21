@@ -1,5 +1,5 @@
 [package]
-name = "milena"
+name = "milena-cache"
 version = "0.1.0"
 edition = "2021"
 
@@ -23,7 +23,7 @@ milena-protos = { path = "../milena-protos" }
 
 
 [[bin]]
-name = "cache-server"
+name = "milena-cache"
 path = "src/main.rs"
 
 
