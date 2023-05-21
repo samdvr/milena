@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         operation: Arc::new(Mutex::new(
             Operation::<LRUStore, DiskStore, S3Store>::simple_new(
                 100,
-                Duration::from_secs(100000),
+                Duration::from_secs(360),
                 client,
             ),
         )),
