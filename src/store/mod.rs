@@ -176,7 +176,7 @@ fn test_build_cache() {
 
     assert_eq!(
         String::from_utf8_lossy(result.0.as_slice()),
-        "254f1c075eea17b845c836c9e1ebee1d0cd"
+        "254/cb9e520cda80413019ed2449e017137f"
     );
 }
 #[tokio::test]
