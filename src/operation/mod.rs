@@ -33,7 +33,6 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
     pub async fn get(&mut self, bucket: &str, key: &Key) -> Result<Option<Value>> {
         // Check in-memory store first
         if let Some(data) = self.in_memory_store.get(bucket, key).await? {
-            print!("here!!! 37");
             return Ok(Some(data));
         }
 
@@ -41,7 +40,6 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
         if let Some(data) = self.on_disk_store.get(bucket, key).await? {
             // Store data in in-memory store before returning it
             self.in_memory_store.put(bucket, key, &data).await?;
-            print!("here!!! 45");
             return Ok(Some(data));
         }
 
@@ -50,11 +48,8 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
             // Store data in in-memory and on-disk stores before returning it
             self.in_memory_store.put(bucket, key, &data).await?;
             self.on_disk_store.put(bucket, key, &data).await?;
-            print!("here!!! 54");
             return Ok(Some(data));
         }
-
-        print!("here!!! 58");
 
         Ok(None)
     }
