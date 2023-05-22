@@ -9,6 +9,7 @@ use crate::store::LRUStore;
 use crate::store::S3Store;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::Client;
+use cache_server::cache_server::CacheServer;
 use milena_protos::cache_server;
 use std::sync::Arc;
 use std::time::Duration;
@@ -32,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     Server::builder()
-        .add_service(cache_server::cache_server::CacheServer::new(service))
+        .add_service(CacheServer::new(service))
         .serve(addr)
         .await?;
 
