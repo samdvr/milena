@@ -20,6 +20,8 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
     ) -> Operation<LRUStore, DiskStore, S3Store> {
         let in_memory_store = LRUStore::new(in_memory_lru_capacity);
         let mut ops = Options::default();
+        // enable blobstore (key value separation)
+        ops.set_enable_blob_files(true);
         ops.create_if_missing(true);
         let on_disk_store = DiskStore::new(&ops, disk_store_ttl, "./db");
         let cloud_store = S3Store { client };

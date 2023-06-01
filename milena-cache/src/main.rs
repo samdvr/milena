@@ -11,6 +11,8 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::Client;
 use cache_server::cache_server::CacheServer;
 use milena_protos::cache_server;
+use milena_protos::router_server::router_client::RouterClient;
+use milena_protos::router_server::JoinRequest;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -31,6 +33,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         )),
     };
+    RouterClient::connect("dst")
+        .await
+        .unwrap()
+        .join(tonic::Request::new(JoinRequest {
+            address: "".to_string(),
+        }))
+        .await?;
 
     Server::builder()
         .add_service(CacheServer::new(service))
