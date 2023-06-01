@@ -22,6 +22,18 @@ impl<I: Store, O: Store, C: Store> Operation<I, O, C> {
         let mut ops = Options::default();
         // enable blobstore (key value separation)
         ops.set_enable_blob_files(true);
+        // Blob files are kept until their total size exceeds this amount.
+        ops.set_blob_file_size(128 * 1024 * 1024); // 128 MB
+
+        // Minimum size of value to be stored in blob file. Values smaller than this threshold are stored inline.
+        ops.set_min_blob_size(1024); // 1KB
+
+        // If enable_blob_garbage_collection is true, then blob files are eligible to be
+        // garbage collected and compacted when their expiration time is reached.
+        ops.set_enable_blob_gc(true);
+
+        // Minimum ratio of live data size to total data size for a blob file to be considered for garbage collection.
+        ops.set_blob_gc_age_cutoff(0.5);
         ops.create_if_missing(true);
         let on_disk_store = DiskStore::new(&ops, disk_store_ttl, "./db");
         let cloud_store = S3Store { client };
