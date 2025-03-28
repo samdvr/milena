@@ -7,8 +7,16 @@ edition = "2021"
 
 [dependencies]
 milena-protos = { path = "../milena-protos" }
-tokio = { version = "1", features = ["full"] }
-prost = "0.11.5"
-tonic = "0.8.3"
-conhash = "0.5.0"
+tokio = { version = "1.0", features = ["full"] }
+prost = "0.11"
+tonic = "0.10.2"
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1.0"
+conhash = "0.5"
 twox-hash = "1.6.0"
+deadpool = { version = "0.9", features = ["managed"] }
+async-trait = "0.1"
+governor = "0.5"
+serde = { version = "1.0", features = ["derive"] }

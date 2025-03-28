@@ -1,7 +1,3 @@
 [workspace]
 resolver = "2"
-members = [
-    "milena-cache",
-    "milena-protos",
-    "milena-router"
-]
+members = ["milena-cache", "milena-protos", "milena-router"]

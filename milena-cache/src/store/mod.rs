@@ -1,14 +1,9 @@
 use anyhow::Result;
-use aws_sdk_s3::types::ByteStream;
 use lru::LruCache;
 
 use tonic::async_trait;
 
-use std::{
-    num::NonZeroUsize,
-    path::Path,
-    time::Duration,
-};
+use std::{num::NonZeroUsize, path::Path, time::Duration};
 
 use rocksdb::Options;
 #[derive(Clone, Debug, PartialEq)]
@@ -119,7 +114,7 @@ impl Store for S3Store {
             .put_object()
             .bucket(bucket)
             .key(std::str::from_utf8(build_cache_key(bucket.as_bytes(), key).0.as_slice()).unwrap())
-            .body(ByteStream::from(value.clone().0))
+            .body(aws_sdk_s3::primitives::ByteStream::from(value.clone().0))
             .send()
             .await;
         match result {

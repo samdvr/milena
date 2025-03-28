@@ -1,20 +1,21 @@
 use crate::{
+    error::Result,
+    metrics::Metrics,
     operation::Operation,
     store::{DiskStore, Key, LRUStore, S3Store, Value},
 };
-
-use tonic::{Response, Status};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tonic::{Code, Response, Status};
 
 use milena_protos::cache_server::{
     cache_server::Cache, DeleteRequest, DeleteResponse, GetRequest, GetResponse, PutRequest,
     PutResponse,
 };
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tonic::Code;
 
 pub struct CacheService {
     pub operation: Arc<Mutex<Operation<LRUStore, DiskStore, S3Store>>>,
+    pub metrics: Arc<Metrics>,
 }
 
 #[tonic::async_trait]
@@ -22,57 +23,89 @@ impl Cache for CacheService {
     async fn get(
         &self,
         request: tonic::Request<GetRequest>,
-    ) -> Result<Response<GetResponse>, Status> {
+    ) -> std::result::Result<Response<GetResponse>, tonic::Status> {
+        let timer = self.metrics.operation_duration.start_timer();
+        self.metrics.request_counter.inc();
+
         let request_ref = request.into_inner();
         let key = Key(request_ref.key);
         let bucket = &request_ref.bucket;
-        let result = self.operation.lock().await.get(bucket, &key).await;
-        match result {
-            Ok(Some(v)) => Ok(Response::new(GetResponse {
+
+        let result = self
+            .operation
+            .lock()
+            .await
+            .get(bucket, &key)
+            .await
+            .map_err(|e| {
+                self.metrics.error_counter.inc();
+                tonic::Status::new(tonic::Code::Internal, format!("{e}"))
+            })?;
+        timer.observe_duration();
+
+        if let Some(v) = result {
+            self.metrics.cache_hits.inc();
+            Ok(Response::new(GetResponse {
                 successful: true,
                 value: v.0,
-            })),
-            Ok(None) => Ok(Response::new(GetResponse {
+            }))
+        } else {
+            self.metrics.cache_misses.inc();
+            Ok(Response::new(GetResponse {
                 successful: true,
                 value: vec![],
-            })),
-            Err(e) => Err(Status::new(Code::Internal, format!("{e}"))),
+            }))
         }
     }
 
     async fn put(
         &self,
-        request: tonic::Request<PutRequest>,
-    ) -> Result<Response<PutResponse>, Status> {
+        request: tonic::Request<milena_protos::cache_server::PutRequest>,
+    ) -> std::result::Result<Response<PutResponse>, tonic::Status> {
+        let timer = self.metrics.operation_duration.start_timer();
+        self.metrics.request_counter.inc();
+
         let request_ref = request.into_inner();
         let key = Key(request_ref.key);
         let bucket = &request_ref.bucket;
         let value = request_ref.value;
-        let result = self
-            .operation
+
+        self.operation
             .lock()
             .await
             .put(bucket, &key, &Value(value))
-            .await;
+            .await
+            .map_err(|e| {
+                self.metrics.error_counter.inc();
+                tonic::Status::new(tonic::Code::Internal, format!("{e}"))
+            })?;
+        timer.observe_duration();
 
-        match result {
-            Ok(()) => Ok(Response::new(PutResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, format!("{e}"))),
-        }
+        Ok(Response::new(PutResponse { successful: true }))
     }
 
     async fn delete(
         &self,
         request: tonic::Request<DeleteRequest>,
-    ) -> Result<Response<DeleteResponse>, Status> {
+    ) -> std::result::Result<Response<DeleteResponse>, tonic::Status> {
+        let timer = self.metrics.operation_duration.start_timer();
+        self.metrics.request_counter.inc();
+
         let request_ref = request.into_inner();
         let key = request_ref.key;
         let bucket = &request_ref.bucket;
-        let result = self.operation.lock().await.delete(bucket, &Key(key)).await;
 
-        match result {
-            Ok(()) => Ok(Response::new(DeleteResponse { successful: true })),
-            Err(e) => Err(Status::new(Code::Internal, format!("{e}"))),
-        }
+        self.operation
+            .lock()
+            .await
+            .delete(bucket, &Key(key))
+            .await
+            .map_err(|e| {
+                self.metrics.error_counter.inc();
+                tonic::Status::new(tonic::Code::Internal, format!("{e}"))
+            })?;
+        timer.observe_duration();
+
+        Ok(Response::new(DeleteResponse { successful: true }))
     }
 }
