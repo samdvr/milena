@@ -1,15 +1,14 @@
 use crate::{
-    error::Result,
     metrics::Metrics,
     operation::Operation,
     store::{DiskStore, Key, LRUStore, S3Store, Value},
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tonic::{Code, Response, Status};
+use tonic::Response;
 
 use milena_protos::cache_server::{
-    cache_server::Cache, DeleteRequest, DeleteResponse, GetRequest, GetResponse, PutRequest,
+    cache_server::Cache, DeleteRequest, DeleteResponse, GetRequest, GetResponse,
     PutResponse,
 };
 

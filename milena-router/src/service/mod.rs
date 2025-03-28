@@ -1,21 +1,19 @@
 use crate::{
-    connection::{CacheClientManager, ConnectionError, Pool, PooledClient},
+    connection::{CacheClientManager, Pool, PooledClient},
     rate_limit::{RateLimitError, RateLimiterMiddleware},
     validation::{
         validate_address, validate_bucket_name, validate_key, validate_value, ValidationError,
     },
 };
 use conhash::{ConsistentHash, Node};
-use milena_protos::cache_server::cache_client::CacheClient;
-use milena_protos::cache_server::{self, cache_client};
+use milena_protos::cache_server::{self};
 use milena_protos::router_server::{router_server::Router, *};
 use std::collections::HashMap;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
-use tonic::transport::Channel;
 use tonic::{Code, Request, Response, Status};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 #[derive(Debug, Error)]
 pub enum RouterError {
@@ -41,7 +39,7 @@ pub struct ServerNode {
 
 impl Node for ServerNode {
     fn name(&self) -> String {
-        format!("{}", self.host)
+        self.host.to_string()
     }
 }
 

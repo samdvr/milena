@@ -6,7 +6,6 @@ mod service;
 mod store;
 
 use crate::config::Config;
-use crate::error::CacheError;
 use crate::metrics::Metrics;
 use crate::operation::Operation;
 use crate::service::CacheService;
@@ -17,7 +16,6 @@ use aws_types::region::Region;
 use cache_server::cache_server::CacheServer;
 use milena_protos::cache_server;
 use milena_protos::router_server::router_client::RouterClient;
-use milena_protos::router_server::JoinRequest;
 use prometheus::Encoder;
 use std::sync::Arc;
 use std::time::Duration;

@@ -1,6 +1,5 @@
 use prometheus::{Counter, Histogram, IntCounter, Registry};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct Metrics {

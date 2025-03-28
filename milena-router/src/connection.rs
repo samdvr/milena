@@ -1,6 +1,5 @@
 use deadpool::managed::{Manager, Object, RecycleResult};
 use milena_protos::cache_server::cache_client::CacheClient;
-use std::time::Duration;
 use thiserror::Error;
 use tonic::transport::Channel;
 

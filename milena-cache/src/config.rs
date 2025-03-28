@@ -1,6 +1,5 @@
 use serde::Deserialize;
 use std::net::SocketAddr;
-use std::time::Duration;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
